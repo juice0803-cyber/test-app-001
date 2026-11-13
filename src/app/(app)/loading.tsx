@@ -1,1 +1,0 @@
-export default function Loading() { return <div className="loading-state" role="status"><div className="skeleton skeleton-heading" /><div className="dashboard-grid"><div className="skeleton skeleton-card" /><div className="skeleton skeleton-card" /></div><span>正在載入你的健康空間…</span></div>; }
