@@ -1,0 +1,13 @@
+node_modules/
+.next/
+out/
+.env*
+!.env.example
+data/
+coverage/
+src/generated/
+*.tsbuildinfo
+next-env.d.ts
+*.log
+test-results/
+.local/
