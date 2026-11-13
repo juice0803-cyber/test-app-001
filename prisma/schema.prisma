@@ -1,0 +1,280 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id            String   @id
+  name          String
+  email         String   @unique
+  emailVerified Boolean  @default(false)
+  image         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  sessions      Session[]
+  accounts      Account[]
+  profile       UserProfile?
+  weights       BodyWeightRecord[]
+  foodEntries   FoodEntry[]
+  nutritionDays NutritionDay[]
+  inbodyRecords InbodyRecord[]
+  workouts      WorkoutSession[]
+
+  @@map("users")
+}
+
+model Session {
+  id        String   @id
+  expiresAt DateTime
+  token     String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ipAddress String?
+  userAgent String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("sessions")
+}
+
+model Account {
+  id                     String    @id
+  accountId              String
+  providerId             String
+  userId                 String
+  user                   User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken            String?
+  refreshToken           String?
+  idToken                String?
+  accessTokenExpiresAt   DateTime?
+  refreshTokenExpiresAt  DateTime?
+  scope                  String?
+  password               String?
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+
+  @@index([userId])
+  @@unique([providerId, accountId])
+  @@map("accounts")
+}
+
+model Verification {
+  id         String   @id
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([identifier])
+  @@map("verifications")
+}
+
+model RateLimit {
+  id          String @id @default(cuid())
+  key         String @unique
+  count       Int
+  lastRequest BigInt
+
+  @@map("rate_limits")
+}
+
+enum Goal {
+  FAT_LOSS
+  MUSCLE_GAIN
+  MAINTAIN
+  RECOMPOSITION
+}
+
+enum Sex {
+  MALE
+  FEMALE
+  UNSPECIFIED
+}
+
+enum Activity {
+  SEDENTARY
+  LIGHT
+  MODERATE
+  HIGH
+  VERY_HIGH
+}
+
+enum RiskContext {
+  GENERAL
+  PREGNANCY
+  CLINICAL
+  EATING_CONCERN
+}
+
+model UserProfile {
+  id                  String      @id @default(cuid())
+  userId              String      @unique
+  user                User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  nickname            String
+  age                 Int?
+  sex                 Sex         @default(UNSPECIFIED)
+  heightCm            Float?
+  startingWeightKg    Float?
+  targetWeightKg      Float?
+  targetBodyFat       Float?
+  targetMuscleKg      Float?
+  goal                Goal        @default(MAINTAIN)
+  activity            Activity    @default(SEDENTARY)
+  trainingDays        Int         @default(3)
+  trainingMinutes     Int         @default(60)
+  experience          String      @default("BEGINNER")
+  dietaryPreferences  String      @default("")
+  restrictions        String      @default("")
+  riskContext         RiskContext @default(GENERAL)
+  calorieOverride     Int?
+  proteinOverride     Int?
+  createdAt           DateTime    @default(now())
+  updatedAt           DateTime    @updatedAt
+
+  @@map("user_profiles")
+}
+
+// Phase 1 僅建立 Dashboard 所需的讀取模型；Phase 2 才開放以下紀錄的 CRUD。
+model BodyWeightRecord {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  measuredAt DateTime @db.Timestamptz(3)
+  weightKg   Float
+  waistCm    Float?
+  sleepHours Float?
+  fatigue    Int?
+  note       String   @default("")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([userId, measuredAt])
+  @@map("body_weight_records")
+}
+
+model NutritionDay {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date      DateTime @db.Date
+  complete  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, date])
+  @@map("nutrition_days")
+}
+
+model FoodEntry {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  eatenAt   DateTime @db.Timestamptz(3)
+  meal      String
+  name      String
+  grams     Float?
+  calories  Float
+  protein   Float
+  carbs     Float
+  fat       Float
+  fiber     Float?
+  source    String   @default("USER_INPUT")
+  note      String   @default("")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId, eatenAt])
+  @@map("food_entries")
+}
+
+model InbodyRecord {
+  id             String   @id @default(cuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  measuredAt     DateTime @db.Timestamptz(3)
+  weightKg       Float
+  muscleKg       Float?
+  fatKg          Float?
+  bodyFat        Float?
+  bmi            Float?
+  leanMassKg     Float?
+  waterLiters    Float?
+  bmr            Float?
+  visceralFat    Float?
+  waistHipRatio  Float?
+  device         String   @default("")
+  note           String   @default("")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([userId, measuredAt])
+  @@map("inbody_records")
+}
+
+model WorkoutSession {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  startedAt   DateTime @db.Timestamptz(3)
+  name        String
+  minutes     Int
+  completed   Boolean  @default(false)
+  note        String   @default("")
+  exercises   WorkoutExercise[]
+  cardio      CardioSession[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId, startedAt])
+  @@map("workout_sessions")
+}
+
+model WorkoutExercise {
+  id        String         @id @default(cuid())
+  sessionId String
+  session   WorkoutSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  name      String
+  muscle    String
+  equipment String
+  position  Int
+  sets      WorkoutSet[]
+
+  @@index([sessionId])
+  @@map("workout_exercises")
+}
+
+model WorkoutSet {
+  id         String          @id @default(cuid())
+  exerciseId String
+  exercise   WorkoutExercise @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
+  position   Int
+  weightKg   Float
+  reps       Int
+  rpe        Float?
+  restSec    Int?
+
+  @@index([exerciseId])
+  @@map("workout_sets")
+}
+
+model CardioSession {
+  id             String         @id @default(cuid())
+  sessionId      String
+  session        WorkoutSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  type           String
+  minutes        Int
+  distanceKm     Float?
+  averageHr      Int?
+  intensity      String
+  calories       Float?
+  calorieSource  String?
+
+  @@index([sessionId])
+  @@map("cardio_sessions")
+}
